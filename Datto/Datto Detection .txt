@@ -1,0 +1,16 @@
+Datto Detection: 
+RegKeys:
+Computer\HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\CentraStage
+	Display Name = Datto RMM
+	DisplayVersion 4.4.2224.2224 (As of 09/06/2024)
+	Publisher = Datto Inc.
+	UninstallString = "C:\Program Files (x86)\CentraStage\uninst.exe"
+
+Computer\HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Services\CagService
+
+Services: 
+CagService.exe | CagService | Datto RMM | 30716 | "C:\Program Files (x86)\CentraStage\CagService.exe" |
+
+File Locations:
+ "C:\Program Files (x86)\CentraStage\CagService.exe"
+ "C:\Program Files (x86)\CentraStage\uninst.exe"

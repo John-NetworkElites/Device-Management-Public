@@ -1,0 +1,5 @@
+Get-ADDomainController -Discover:$true -DomainName:"CORP" -ForceDiscover:$true -Service:ADWS -Writable:$true
+
+New-PSDrive -Name:"ADDrive0" -PSProvider:"ActiveDirectory" -Root:"" -Server:"EDHCHYPVDC03.corp.edhc.com"
+
+Get-ADRootDSE -Server:"EDHCHYPVDC03.corp.edhc.com"

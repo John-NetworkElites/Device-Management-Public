@@ -1,0 +1,19 @@
+# Import the Active Directory module
+Import-Module activedirectory
+
+# Get the user names
+$username1 = "user1"
+$username2 = "user2"
+
+# Get the security groups for each user
+$groups1 = Get-ADPrincipalGroupMembership $username1
+$groups2 = Get-ADPrincipalGroupMembership $username2
+
+# Compare the security groups
+$compare = Compare-Object $groups1 $groups2 -Property Name
+
+# Print the results of the comparison
+Write-Host "The following security groups are in common:"
+foreach ($group in $compare.SideIndicators["=="]) {
+  Write-Host $group.Name
+}
