@@ -1,3 +1,19 @@
+<#
+.SYNOPSIS
+Debloat script geared toward Windows 11 devices
+.NOTES
+Written by John Johnson on 09/11/2024
+Credit to Andrew S Taylor for logic and backbone
+Source: https://andrewstaylor.com/2022/08/09/removing-bloatware-from-windows-10-11-via-script/
+#>
+
+[CmdletBinding()]
+param (
+    #Clear start menu if switch is called (Off by default)
+    [Parameter(Mandatory=$false)]
+    [switch]$ClearStartMenu
+)
+
 $DebloatFolder = "C:\ProgramData\Debloat"
 If (Test-Path $DebloatFolder) {
     Write-Output "$DebloatFolder exists. Skipping."
@@ -70,6 +86,69 @@ function Remove-Regkey {
     }
 }
 
+function Clear-StartMenu {
+    param(
+        $message = "Clearing Pinned Items on Start Menu..."
+    )
+
+    Write-Output $message
+
+    # Path to start menu template
+    $startmenuTemplate = "$PSScriptRoot/Start/start2.bin"
+
+    # Get all user profile folders
+    $usersStartMenu = get-childitem -path "C:\Users\*\AppData\Local\Packages\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\LocalState"
+
+    # Copy Start menu to all users folders
+    ForEach ($startmenu in $usersStartMenu) {
+        $startmenuBinFile = $startmenu.Fullname + "\start2.bin"
+
+        # Check if bin file exists
+        if(Test-Path $startmenuBinFile) {
+            Copy-Item -Path $startmenuTemplate -Destination $startmenu -Force
+
+            $cpyMsg = "Replaced start menu for user " + $startmenu.Fullname.Split("\")[2]
+            Write-Output $cpyMsg
+        }
+        else {
+            # Bin file doesn't exist, indicating the user is not running the correct version of windows. Exit function
+            Write-Output "Error: Start menu file not found. Please make sure you're running Windows 11 22H2 or later"
+            return
+        }
+    }
+
+    # Also apply start menu template to the default profile
+
+    # Path to default profile
+    $defaultProfile = "C:\Users\default\AppData\Local\Packages\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\LocalState"
+
+    # Create folder if it doesn't exist
+    if(-not(Test-Path $defaultProfile)) {
+        new-item $defaultProfile -ItemType Directory -Force | Out-Null
+        Write-Output "Created LocalState folder for default user"
+    }
+
+    # Copy template to default profile
+    Copy-Item -Path $startmenuTemplate -Destination $defaultProfile -Force
+    Write-Output "Copied start menu template to default user folder"
+}
+# Check if the -ClearStartMenu switch parameter was passed
+if ($PSCmdlet.MyInvocation.BoundParameters.ContainsKey('ClearStartMenu')) {
+Clear-StartMenu
+}
+
+function Restart-Explorer {
+    Write-Output "> Restarting windows explorer to apply all changes."
+
+    Start-Sleep 0.5
+
+    taskkill /f /im explorer.exe
+
+    Start-Process explorer.exe
+
+    Write-Output ""
+}
+
 $RegkeysToSet = @{
     #Disable Bing from Search bar
     "HKLM:\Software\Policies\Microsoft\Windows\Explorer\DisableSearchBoxSuggestions" = 00000001
@@ -80,8 +159,6 @@ $RegkeysToSet = @{
     #Disable Lockscreen tips
     "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-338387Enabled" = 00000000
     "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\RotatingLockScreenOverlayEnabled" = 00000000
-    #Disable Online Speech Regonition
-    "HKCU:\Software\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy\HasAccepted" = 00000000
     #Disable Improving Inking and Typing Recognition
     "HKCU:\Software\Microsoft\Input\TIPC\Enabled" = 00000000
     #Disable Widgets on Taskbar
@@ -107,3 +184,11 @@ ForEach ($Path in $RegkeysToSet.Keys){
 ForEach($Path in $RegkeysToRemove){
     Remove-Regkey -path $Path
 }
+
+#Clear out start menu (Not needed for most Autopilot deployments)
+#Comment out if needed
+#Can also be called from switch -ClearStartMenu
+# Clear-StartMenu
+
+#Restart explorer to apply changes
+Restart-Explorer
