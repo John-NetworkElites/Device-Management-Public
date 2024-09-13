@@ -37,6 +37,8 @@ invoke-expression -Command $templateFilePath
 
 ## Set other settings ##
 
+#Get all SIDS to remove at user-level if needed
+$UserSIDs = Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList" | Select-Object -ExpandProperty PSChildName
 function Set-Regkey {
     # Requires the full path of the registry key to set
     [CmdletBinding()]
@@ -60,6 +62,20 @@ function Set-Regkey {
             Set-ItemProperty $path $key -Value $value
         }
         Write-Output "Successfully set $path\$key to $value"
+        #Do the same for all users
+        if ($path.StartsWith("HKCU")) {
+
+            $path = $path -replace "^HKCU:", ""
+            foreach ($sid in $UserSIDs) {
+                $userPath = "Registry::HKU\"+$sid+$path
+                If (!(Test-Path $userPath)) {
+                    New-Item $userPath
+                } Else {
+                Set-ItemProperty $userPath $key -Value $value
+                }
+            }
+            Write-Output "Successfully set $userPath\$key to $value for all users"
+        }
     } catch {
         Write-Warning "`nThere was an issue writing $path\$key"
         Write-Warning $_
@@ -170,9 +186,13 @@ $RegkeysToSet = @{
 }
 
 $RegkeysToRemove = @(
-    ## Remove Gallery and Home from quick access
+    #Remove Gallery and Home from quick access
+    #   Gallery
     "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\Namespace\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}"
-    "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}"
+    "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace_41040327\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}"
+    #   Home
+    #"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}"
+    #"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace_36354489\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}"
     #Hide duplicate drives from Flie Explorer
     "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\DelegateFolders\{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}"
 )
