@@ -31,6 +31,23 @@ foreach ($obj32 in $InstalledSoftware32) {
     }
 }
 
-write-host '<-Start Result->'
-write-host "Needs Remediation= $mcafeeinstalled"
-write-host '<-End Result->'
+if(Get-AppxPackage *mcafee* -AllUsers){
+    Write-Host "McAffe detected as an AppxPackage"
+    $mcafeeinstalled = "true"
+}
+
+# If Mcafee is installed, we will return with a failure / negative status, as remediation is needed to remove it
+if ($mcafeeinstalled -eq "true") {
+    write-host '<-Start Result->'
+    write-host "Needs Remediation= $mcafeeinstalled"
+    write-host '<-End Result->'
+    exit 1
+}
+
+# If Mcafee is not installed, we will return with a success / positive status, as no remediation is needed
+if ($mcafeeinstalled -eq "false") {
+    write-host '<-Start Result->'
+    write-host "Needs Remediation= $mcafeeinstalled"
+    write-host '<-End Result->'
+    exit 0
+}

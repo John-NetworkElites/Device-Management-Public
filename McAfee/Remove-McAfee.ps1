@@ -19,24 +19,40 @@ $huntressInstalled = "false"
 $InstalledSoftware = Get-ChildItem "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall"
 foreach ($obj in $InstalledSoftware) {
     $name = $obj.GetValue('DisplayName')
-    switch -Wildcard ($name) {
-        "*McAfee*"  { $mcafeeinstalled = "true" }
-        "*Cynet*"   { $cynetInstalled = "true" }
-        "*Huntress*"{ $huntressInstalled = "true" }
-        Default     { Write-Output "Match not found" }
+    if($name -like "*McAfee*"){
+        $mcafeeinstalled = "true"
+        Write-Host "$name found"
+        continue
+    } if($name -like "*Cynet*"){
+        $cynetInstalled = "true"
+        Write-Host "$name found"
+        continue
+    } if($name -like "*Huntress*"){
+        $huntressInstalled = "true"
+        Write-Host "$name found"
+        continue
     }
 }
 
 $InstalledSoftware32 = Get-ChildItem "HKLM:\Software\WOW6432NODE\Microsoft\Windows\CurrentVersion\Uninstall"
 foreach ($obj32 in $InstalledSoftware32) {
     $name32 = $obj32.GetValue('DisplayName')
-    switch ($name32) {
-        "*McAfee*"  { $mcafeeinstalled = "true" }
-        "*Cynet*"   { $cynetInstalled = "true" }
-        "*Huntress*"{ $huntressInstalled = "true" }
-        Default     { Write-Output "Match not found" }
+    if($name32 -like "*McAfee*"){
+        $mcafeeinstalled = "true"
+        Write-Host "$name32 found"
+        continue
+    } if($name32 -like "*Cynet*"){
+        $cynetInstalled = "true"
+        Write-Host "$name32 found"
+        continue
+    } if($name32 -like "*Huntress*"){
+        $huntressInstalled = "true"
+        Write-Host "$name32 found"
+        continue
     }
 }
+
+if(Get-AppxPackage *mcafee* -AllUsers) {$mcafeeinstalled = "true"}
 
 if($mcafeeinstalled -eq "true" -and ($cynetInstalled -eq "true" -and $huntressInstalled -eq "true")){$remediation = "true"}
 
@@ -44,7 +60,7 @@ write-host '<-Start Result->'
 write-host "Needs Remediation=$remediation"
 write-host '<-End Result->'
 
-if ($mcafeeinstalled -eq "true" -and ($cynetInstalled -eq "true" -and $huntressInstalled -eq "true")) {
+if ($remediation -eq "true") {
     write-output "McAfee detected as well as Cynet and Huntress. Removing..."
     #Remove McAfee bloat
     ##McAfee
@@ -55,6 +71,19 @@ if ($mcafeeinstalled -eq "true" -and ($cynetInstalled -eq "true" -and $huntressI
 
     # Set Save Directory
     $destination = 'C:\ProgramData\Debloat\mcafee.zip'
+    #Create Folder
+    $DebloatFolder = "C:\ProgramData\Debloat"
+    If (Test-Path $DebloatFolder) {
+        Write-Output "$DebloatFolder exists. Skipping."
+    }
+    Else {
+        Write-Output "The folder '$DebloatFolder' doesn't exist. This folder will be used for storing logs created after the script runs. Creating now."
+        Start-Sleep 1
+        New-Item -Path "$DebloatFolder" -ItemType Directory
+        Write-Output "The folder $DebloatFolder was successfully created."
+    }
+
+    Start-Transcript -Path "C:\ProgramData\Debloat\Debloat.log"
 
     #Download the file
     Invoke-WebRequest -Uri $URL -OutFile $destination -Method Get
@@ -113,6 +142,16 @@ if ($mcafeeinstalled -eq "true" -and ($cynetInstalled -eq "true" -and $huntressI
         Catch { Write-Warning -Message "Failed to uninstall: [$($_.Name)]" }
     }
 
+    #Attempt to Remove by AppxPackage
+    try {
+        Get-AppxPackage -AllUsers *mcafee* | Remove-AppxPackage -AllUsers
+        Write-Host "Removed McAfee by AppxPackage"
+    }
+    catch {
+        If(Get-AppxPackage -AllUsers *mcafee*) {Write-Host "Unable to find McAfee by AppxPackage"}
+        Else {Write-Host "There was an issue when removing McAfee by AppxPackage - `n$_"}
+    }
+    
     ##Remove Safeconnect
     $safeconnects = Get-ChildItem -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall, HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall | Get-ItemProperty | Where-Object { $_.DisplayName -match "McAfee Safe Connect" } | Select-Object -Property UninstallString
 
